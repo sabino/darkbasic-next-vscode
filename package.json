@@ -1,0 +1,240 @@
+{
+  "name": "darkbasic-next",
+  "displayName": "DarkBASIC Next",
+  "description": "DarkBASIC Professional language support, project workflows, compiler integration, and package tooling for VS Code.",
+  "version": "0.1.0",
+  "publisher": "sabino",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sabino/darkbasic-next-vscode.git"
+  },
+  "homepage": "https://github.com/sabino/darkbasic-next-vscode",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:darkbasic",
+    "onCommand:darkbasicNext.newProject",
+    "onCommand:darkbasicNext.openProject",
+    "onCommand:darkbasicNext.compile",
+    "onCommand:darkbasicNext.run",
+    "onCommand:darkbasicNext.package.search",
+    "onView:darkbasicNext.project",
+    "onView:darkbasicNext.packages"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "darkbasic",
+        "aliases": [
+          "DarkBASIC",
+          "DarkBASIC Professional",
+          "DarkBASIC Next"
+        ],
+        "extensions": [
+          ".dba",
+          ".dbsource"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "darkbasic-project",
+        "aliases": [
+          "DarkBASIC Project"
+        ],
+        "extensions": [
+          ".dbpro"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "darkbasic",
+        "scopeName": "source.darkbasic",
+        "path": "./syntaxes/darkbasic.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "darkbasic",
+        "path": "./snippets/darkbasic.json"
+      }
+    ],
+    "configuration": {
+      "title": "DarkBASIC Next",
+      "properties": {
+        "darkbasicNext.installRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Optional explicit DarkBASIC install root. When empty, the extension auto-discovers a repo-local Install tree, DBNEXT_ROOT, or a legacy install."
+        },
+        "darkbasicNext.dbnextPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional explicit path to dbnext.exe. When empty, the extension uses Install\\\\Tools\\\\dbnext.exe from the discovered toolchain."
+        },
+        "darkbasicNext.tempRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Optional override for temporary compiler sessions. When empty, the extension uses %LOCALAPPDATA%\\\\DarkBASICNext\\\\temp."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "darkbasicNext.newProject",
+        "title": "DarkBASIC Next: New Project"
+      },
+      {
+        "command": "darkbasicNext.openProject",
+        "title": "DarkBASIC Next: Open Project"
+      },
+      {
+        "command": "darkbasicNext.saveProject",
+        "title": "DarkBASIC Next: Save Project"
+      },
+      {
+        "command": "darkbasicNext.saveProjectAs",
+        "title": "DarkBASIC Next: Save Project As"
+      },
+      {
+        "command": "darkbasicNext.addFile",
+        "title": "DarkBASIC Next: Add File To Project"
+      },
+      {
+        "command": "darkbasicNext.importFile",
+        "title": "DarkBASIC Next: Import File Into Project"
+      },
+      {
+        "command": "darkbasicNext.setMainFile",
+        "title": "DarkBASIC Next: Set Main File"
+      },
+      {
+        "command": "darkbasicNext.compile",
+        "title": "DarkBASIC Next: Compile"
+      },
+      {
+        "command": "darkbasicNext.run",
+        "title": "DarkBASIC Next: Compile And Run"
+      },
+      {
+        "command": "darkbasicNext.debug",
+        "title": "DarkBASIC Next: Debug"
+      },
+      {
+        "command": "darkbasicNext.step",
+        "title": "DarkBASIC Next: Step"
+      },
+      {
+        "command": "darkbasicNext.runPrevious",
+        "title": "DarkBASIC Next: Run Previous Build"
+      },
+      {
+        "command": "darkbasicNext.package.search",
+        "title": "DarkBASIC Next: Search Packages"
+      },
+      {
+        "command": "darkbasicNext.package.install",
+        "title": "DarkBASIC Next: Install Package"
+      },
+      {
+        "command": "darkbasicNext.package.update",
+        "title": "DarkBASIC Next: Update Package"
+      },
+      {
+        "command": "darkbasicNext.package.doctor",
+        "title": "DarkBASIC Next: Package Doctor"
+      },
+      {
+        "command": "darkbasicNext.openHelp",
+        "title": "DarkBASIC Next: Open Help"
+      },
+      {
+        "command": "darkbasicNext.project.refresh",
+        "title": "DarkBASIC Next: Refresh Project",
+        "category": "DarkBASIC Next"
+      },
+      {
+        "command": "darkbasicNext.packages.refresh",
+        "title": "DarkBASIC Next: Refresh Packages",
+        "category": "DarkBASIC Next"
+      },
+      {
+        "command": "darkbasicNext.project.openItem",
+        "title": "DarkBASIC Next: Open Project Item"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "darkbasicNext",
+          "title": "DarkBASIC",
+          "icon": "$(tools)"
+        }
+      ]
+    },
+    "views": {
+      "darkbasicNext": [
+        {
+          "id": "darkbasicNext.project",
+          "name": "Project"
+        },
+        {
+          "id": "darkbasicNext.packages",
+          "name": "Packages"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "darkbasicNext.project.refresh",
+          "when": "view == darkbasicNext.project",
+          "group": "navigation"
+        },
+        {
+          "command": "darkbasicNext.packages.refresh",
+          "when": "view == darkbasicNext.packages",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "darkbasicNext.project.openItem",
+          "when": "view == darkbasicNext.project && viewItem == darkbasicFile",
+          "group": "inline"
+        },
+        {
+          "command": "darkbasicNext.setMainFile",
+          "when": "view == darkbasicNext.project && viewItem == darkbasicFile",
+          "group": "navigation"
+        },
+        {
+          "command": "darkbasicNext.package.install",
+          "when": "view == darkbasicNext.packages && viewItem == darkbasicPackage",
+          "group": "inline"
+        },
+        {
+          "command": "darkbasicNext.package.update",
+          "when": "view == darkbasicNext.packages && viewItem == darkbasicPackage",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.5"
+  }
+}

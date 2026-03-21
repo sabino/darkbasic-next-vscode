@@ -1,0 +1,55 @@
+{
+  "name": "DarkBASIC",
+  "scopeName": "source.darkbasic",
+  "patterns": [
+    {
+      "name": "comment.line.backtick.darkbasic",
+      "match": "`.*$"
+    },
+    {
+      "name": "comment.line.rem.darkbasic",
+      "match": "^(?i:\\s*rem\\b).*$"
+    },
+    {
+      "name": "comment.block.rem.darkbasic",
+      "begin": "^(?i:\\s*remstart\\b).*$",
+      "end": "^(?i:\\s*remend\\b).*$"
+    },
+    {
+      "name": "keyword.directive.darkbasic",
+      "match": "(?i:#(?:constant|include|ifdef|ifndef|endif))\\b"
+    },
+    {
+      "name": "string.quoted.double.darkbasic",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.darkbasic",
+          "match": "\"\""
+        }
+      ]
+    },
+    {
+      "name": "constant.numeric.darkbasic",
+      "match": "\\b\\d+(?:\\.\\d+)?\\b"
+    },
+    {
+      "name": "entity.name.label.darkbasic",
+      "match": "^[A-Za-z_][A-Za-z0-9_]*\\s*:"
+    },
+    {
+      "name": "keyword.control.darkbasic",
+      "match": "\\b(?i:if|then|else|elseif|endif|for|to|step|next|while|endwhile|do|loop|repeat|until|function|endfunction|exitfunction|type|endtype|select|case|default|endselect|goto|gosub|return|exit|sync|end|dim|global|local|const|as|inc|dec)\\b"
+    },
+    {
+      "name": "support.function.darkbasic",
+      "match": "\\b(?i:print|cls|text|ink|color|sync|wait|load image|sprite|paste image|position camera|make object cube|set display mode|set window title)\\b"
+    },
+    {
+      "name": "variable.language.darkbasic",
+      "match": "\\b(?i:true|false)\\b"
+    }
+  ],
+  "repository": {}
+}
