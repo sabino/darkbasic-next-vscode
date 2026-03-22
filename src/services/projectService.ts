@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { DbProProject } from "./dbproProject";
+import { DbProProject, ProjectSettings } from "./dbproProject";
 
 const CURRENT_PROJECT_KEY = "darkbasicNext.currentProject";
 
@@ -229,6 +229,86 @@ export class ProjectService {
     await this.refreshCurrentProject();
   }
 
+  public async updateProjectSettings(settings: Partial<ProjectSettings>): Promise<void> {
+    if (!this.currentProject) {
+      throw new Error("No DarkBASIC project is currently loaded.");
+    }
+
+    this.currentProject.updateProjectSettings(settings);
+    await this.currentProject.save();
+    await this.refreshCurrentProject();
+  }
+
+  public async addTodo(text: string): Promise<void> {
+    if (!this.currentProject) {
+      throw new Error("No DarkBASIC project is currently loaded.");
+    }
+
+    this.currentProject.addTodoEntry(text);
+    await this.currentProject.save();
+    await this.refreshCurrentProject();
+  }
+
+  public async addComment(text: string): Promise<void> {
+    if (!this.currentProject) {
+      throw new Error("No DarkBASIC project is currently loaded.");
+    }
+
+    this.currentProject.addCommentEntry(text);
+    await this.currentProject.save();
+    await this.refreshCurrentProject();
+  }
+
+  public async addMediaFiles(sourcePaths: readonly string[]): Promise<string[]> {
+    if (!this.currentProject) {
+      throw new Error("No DarkBASIC project is currently loaded.");
+    }
+
+    const project = this.currentProject;
+    const destinationDirectory = path.join(project.directory, "media");
+    await fs.mkdir(destinationDirectory, { recursive: true });
+
+    const imported: string[] = [];
+    for (const sourcePath of sourcePaths) {
+      const destinationPath = await copyIntoDirectory(destinationDirectory, sourcePath);
+      const relativePath = path.relative(project.directory, destinationPath);
+      project.addMediaEntry(relativePath);
+      imported.push(destinationPath);
+    }
+
+    await project.save();
+    await this.refreshCurrentProject();
+    return imported;
+  }
+
+  public async setIconFile(sourcePath: string): Promise<string> {
+    if (!this.currentProject) {
+      throw new Error("No DarkBASIC project is currently loaded.");
+    }
+
+    const project = this.currentProject;
+    const destinationPath = await copyIntoDirectory(project.directory, sourcePath);
+    project.setIconEntry(path.relative(project.directory, destinationPath));
+    await project.save();
+    await this.refreshCurrentProject();
+    return destinationPath;
+  }
+
+  public async setCursorFile(slotKey: string, sourcePath: string): Promise<string> {
+    if (!this.currentProject) {
+      throw new Error("No DarkBASIC project is currently loaded.");
+    }
+
+    const project = this.currentProject;
+    const destinationDirectory = path.join(project.directory, "cursors");
+    await fs.mkdir(destinationDirectory, { recursive: true });
+    const destinationPath = await copyIntoDirectory(destinationDirectory, sourcePath);
+    project.setCursorEntry(slotKey, path.relative(project.directory, destinationPath));
+    await project.save();
+    await this.refreshCurrentProject();
+    return destinationPath;
+  }
+
   private async resolveProjectForSource(sourcePath: string): Promise<DbProProject | undefined> {
     if (this.currentProject && this.currentProject.containsSource(sourcePath)) {
       return await this.loadProject(this.currentProject.filePath);
@@ -263,12 +343,16 @@ function sanitizeFileStem(value: string): string {
 }
 
 async function copyIntoProject(projectDirectory: string, sourcePath: string): Promise<string> {
+  return await copyIntoDirectory(projectDirectory, sourcePath);
+}
+
+async function copyIntoDirectory(destinationDirectory: string, sourcePath: string): Promise<string> {
   const parsed = path.parse(sourcePath);
   let attempt = 0;
 
   while (true) {
     const suffix = attempt === 0 ? "" : `-${attempt + 1}`;
-    const candidatePath = path.join(projectDirectory, `${parsed.name}${suffix}${parsed.ext}`);
+    const candidatePath = path.join(destinationDirectory, `${parsed.name}${suffix}${parsed.ext}`);
     if (!(await pathExists(candidatePath))) {
       await fs.copyFile(sourcePath, candidatePath);
       return candidatePath;

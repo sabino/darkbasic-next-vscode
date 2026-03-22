@@ -9,8 +9,10 @@ modernized DarkBASIC Next toolchain.
 - syntax highlighting and starter snippets
 - keyword completions, hover help, document outline, and simple go-to-definition
 - project open/create/save flows for `.dbpro`
+- project assets view for media, cursors, TODO items, comments, and project settings
 - project tree for source files
 - compile and compile-and-run against `DBPCompiler.exe`
+- VS Code task integration for compile and run on `.dbpro` projects
 - package search, install, update, and doctor via `dbnext.exe`
 - local help entry point for repo-local or installed help content
 
@@ -32,6 +34,7 @@ When `darkbasicNext.dbnextPath` is empty, package commands use
 - Create a new project with `DarkBASIC Next: New Project`
 - Compile the current project or active loose `.dba` file
 - Run the last successful build with `DarkBASIC Next: Run Previous Build`
+- Use `Tasks: Run Task` for project-level compile and run tasks
 - Search/install packages with `DarkBASIC Next: Search Packages`
 - Open local help with `DarkBASIC Next: Open Help`
 

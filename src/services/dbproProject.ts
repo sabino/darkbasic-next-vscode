@@ -22,6 +22,28 @@ export interface SourceEntry {
   readonly lineNumber?: number;
 }
 
+export interface NumberedEntry {
+  readonly key: string;
+  readonly index: number;
+  readonly value: string;
+}
+
+export interface CursorEntry {
+  readonly key: string;
+  readonly label: string;
+  readonly value: string;
+}
+
+export interface ProjectSettings {
+  readonly appTitle: string;
+  readonly executable: string;
+  readonly graphicsMode: string;
+  readonly fullscreenResolution: string;
+  readonly windowResolution: string;
+  readonly commandLineArguments: string;
+  readonly icon: string;
+}
+
 export class DbProProject {
   private readonly lines: ProjectLine[];
 
@@ -148,6 +170,18 @@ export class DbProProject {
     return this.getValue("executable") ?? "Application.exe";
   }
 
+  public getProjectSettings(): ProjectSettings {
+    return {
+      appTitle: this.getValue("app title") ?? this.getProjectName(),
+      executable: this.getExecutable(),
+      graphicsMode: this.getValue("graphics mode") ?? "window",
+      fullscreenResolution: this.getValue("fullscreen resolution") ?? "640x480x32",
+      windowResolution: this.getValue("window resolution") ?? "640x480",
+      commandLineArguments: this.getValue("CommandLineArguments") ?? "",
+      icon: this.getValue("icon1") ?? ""
+    };
+  }
+
   public getValue(key: string): string | undefined {
     const match = this.lines.find(line => line.type === "pair" && equalsIgnoreCase(line.key, key));
     return match && match.type === "pair" ? match.value : undefined;
@@ -167,6 +201,115 @@ export class DbProProject {
     }
 
     this.lines.push(pair);
+  }
+
+  public getNumberedEntries(prefix: string): NumberedEntry[] {
+    return this.lines
+      .filter((line): line is PairLine => line.type === "pair" && new RegExp(`^${escapeRegex(prefix)}\\d+$`, "i").test(line.key))
+      .map(line => ({
+        key: line.key,
+        index: extractNumericSuffix(line.key),
+        value: line.value
+      }))
+      .sort((left, right) => left.index - right.index);
+  }
+
+  public appendNumberedEntry(prefix: string, value: string, sectionHeaderPattern?: RegExp): string {
+    const entries = this.getNumberedEntries(prefix);
+    const nextIndex = entries.length === 0 ? 1 : Math.max(...entries.map(entry => entry.index)) + 1;
+    const key = `${prefix}${nextIndex}`;
+    this.insertPairInSection(key, value, sectionHeaderPattern);
+    return key;
+  }
+
+  public getMediaEntries(): readonly string[] {
+    return this.getNumberedEntries("media").map(entry => entry.value);
+  }
+
+  public getTodoEntries(): readonly string[] {
+    return this.getNumberedEntries("ToDo").map(entry => entry.value);
+  }
+
+  public getCommentEntries(): readonly string[] {
+    return this.getNumberedEntries("comments").map(entry => entry.value);
+  }
+
+  public getCursorEntries(): readonly CursorEntry[] {
+    const entries: CursorEntry[] = [];
+    const arrow = this.getValue("cursorarrow");
+    const wait = this.getValue("cursorwait");
+    if (arrow) {
+      entries.push({
+        key: "cursorarrow",
+        label: "Arrow",
+        value: arrow
+      });
+    }
+    if (wait) {
+      entries.push({
+        key: "cursorwait",
+        label: "Wait",
+        value: wait
+      });
+    }
+
+    const pointers = this.lines
+      .filter((line): line is PairLine => line.type === "pair" && /^pointer\d+$/i.test(line.key))
+      .sort((left, right) => extractNumericSuffix(left.key) - extractNumericSuffix(right.key));
+
+    for (const pointer of pointers) {
+      entries.push({
+        key: pointer.key,
+        label: `Pointer ${extractNumericSuffix(pointer.key)}`,
+        value: pointer.value
+      });
+    }
+
+    return entries;
+  }
+
+  public addMediaEntry(value: string): void {
+    this.appendNumberedEntry("media", value, /;\s+\*+\s*Media/i);
+  }
+
+  public addTodoEntry(value: string): void {
+    this.appendNumberedEntry("ToDo", value, /;\s+\*+\s*To Do/i);
+  }
+
+  public addCommentEntry(value: string): void {
+    this.appendNumberedEntry("comments", value, /;\s+\*+\s*Comments/i);
+  }
+
+  public setIconEntry(value: string): void {
+    this.insertPairInSection("icon1", value, /;\s+\*+\s*Icons/i);
+  }
+
+  public setCursorEntry(key: string, value: string): void {
+    this.insertPairInSection(key, value, /;\s+\*+\s*Cursors/i);
+  }
+
+  public updateProjectSettings(settings: Partial<ProjectSettings>): void {
+    if (settings.appTitle !== undefined) {
+      this.setValue("app title", settings.appTitle);
+    }
+    if (settings.executable !== undefined) {
+      this.setValue("executable", settings.executable);
+    }
+    if (settings.graphicsMode !== undefined) {
+      this.setValue("graphics mode", settings.graphicsMode);
+    }
+    if (settings.fullscreenResolution !== undefined) {
+      this.setValue("fullscreen resolution", settings.fullscreenResolution);
+    }
+    if (settings.windowResolution !== undefined) {
+      this.setValue("window resolution", settings.windowResolution);
+    }
+    if (settings.commandLineArguments !== undefined) {
+      this.setValue("CommandLineArguments", settings.commandLineArguments);
+    }
+    if (settings.icon !== undefined) {
+      this.setIconEntry(settings.icon);
+    }
   }
 
   public getSourceEntries(): SourceEntry[] {
@@ -281,6 +424,53 @@ export class DbProProject {
 
     return `${serialized.join("\r\n")}\r\n`;
   }
+
+  private insertPairInSection(key: string, value: string, sectionHeaderPattern?: RegExp): void {
+    const existingIndex = this.lines.findIndex(line => line.type === "pair" && equalsIgnoreCase(line.key, key));
+    if (existingIndex >= 0) {
+      this.lines.splice(existingIndex, 1, {
+        type: "pair",
+        key,
+        value
+      });
+      return;
+    }
+
+    if (!sectionHeaderPattern) {
+      this.lines.push({
+        type: "pair",
+        key,
+        value
+      });
+      return;
+    }
+
+    const sectionStart = this.lines.findIndex(line => line.type === "raw" && sectionHeaderPattern.test(line.text));
+    if (sectionStart < 0) {
+      this.lines.push({
+        type: "pair",
+        key,
+        value
+      });
+      return;
+    }
+
+    let insertIndex = sectionStart + 1;
+    while (insertIndex < this.lines.length) {
+      const current = this.lines[insertIndex];
+      if (current.type === "raw" && /^;\s+\*{4}/.test(current.text)) {
+        break;
+      }
+
+      insertIndex += 1;
+    }
+
+    this.lines.splice(insertIndex, 0, {
+      type: "pair",
+      key,
+      value
+    });
+  }
 }
 
 function equalsIgnoreCase(left: string, right: string): boolean {
@@ -290,6 +480,10 @@ function equalsIgnoreCase(left: string, right: string): boolean {
 function extractNumericSuffix(value: string): number {
   const match = value.match(/(\d+)$/);
   return match ? Number.parseInt(match[1], 10) : 0;
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function parseLineNumber(value: string | undefined): number | undefined {

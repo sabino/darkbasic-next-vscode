@@ -2,10 +2,12 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { registerDarkBasicLanguageProviders, resolveHelpEntryFromEditor } from "./language/darkbasicLanguageProviders";
 import { CompilerService } from "./services/compilerService";
+import { DarkBasicTaskProvider } from "./services/darkbasicTaskProvider";
 import { DbNextClient, ResolvedPackage } from "./services/dbnextClient";
 import { HelpIndex } from "./services/helpIndex";
 import { ProjectService } from "./services/projectService";
 import { resolveToolchain } from "./services/toolchain";
+import { ProjectAssetTreeItem, ProjectAssetsTreeProvider } from "./views/projectAssetsTreeProvider";
 import { PackagesTreeProvider, PackageTreeItem } from "./views/packagesTreeProvider";
 import { ProjectTreeItem, ProjectTreeProvider } from "./views/projectTreeProvider";
 
@@ -16,9 +18,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   await projectService.initialize();
 
   const compilerService = new CompilerService(output, diagnostics, projectService);
+  const taskProvider = new DarkBasicTaskProvider(projectService);
   const dbnextClient = new DbNextClient(output);
   const helpIndex = new HelpIndex(output);
   const projectTreeProvider = new ProjectTreeProvider(projectService);
+  const projectAssetsTreeProvider = new ProjectAssetsTreeProvider(projectService);
   const packagesTreeProvider = new PackagesTreeProvider(dbnextClient);
 
   registerDarkBasicLanguageProviders(context, helpIndex);
@@ -26,12 +30,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     output,
     diagnostics,
+    vscode.tasks.registerTaskProvider("darkbasic-next", taskProvider),
     vscode.window.registerTreeDataProvider("darkbasicNext.project", projectTreeProvider),
+    vscode.window.registerTreeDataProvider("darkbasicNext.assets", projectAssetsTreeProvider),
     vscode.window.registerTreeDataProvider("darkbasicNext.packages", packagesTreeProvider),
     vscode.workspace.onDidSaveTextDocument(async document => {
       const lower = document.fileName.toLowerCase();
       if (lower.endsWith(".dbpro")) {
         await projectService.refreshCurrentProject();
+        projectAssetsTreeProvider.refresh();
       }
 
       if (lower.endsWith(".dba") || lower.endsWith(".dbsource")) {
@@ -67,6 +74,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       projectTreeProvider.refresh();
+      projectAssetsTreeProvider.refresh();
     }),
     vscode.commands.registerCommand("darkbasicNext.openProject", async () => {
       const selection = await vscode.window.showOpenDialog({
@@ -85,6 +93,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await projectService.loadProject(selection[0].fsPath);
       await openFile(selection[0].fsPath);
       projectTreeProvider.refresh();
+      projectAssetsTreeProvider.refresh();
     }),
     vscode.commands.registerCommand("darkbasicNext.saveProject", async () => {
       await projectService.saveCurrentProject();
@@ -158,6 +167,144 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       await projectService.setMainFile(targetPath);
       projectTreeProvider.refresh();
+    }),
+    vscode.commands.registerCommand("darkbasicNext.project.editProperties", async () => {
+      const project = projectService.getCurrentProject();
+      if (!project) {
+        vscode.window.showErrorMessage("No DarkBASIC project is currently loaded.");
+        return;
+      }
+
+      const current = project.getProjectSettings();
+      const propertyPick = await vscode.window.showQuickPick([
+        { label: "App Title", value: "appTitle", current: current.appTitle },
+        { label: "Executable", value: "executable", current: current.executable },
+        { label: "Graphics Mode", value: "graphicsMode", current: current.graphicsMode },
+        { label: "Window Resolution", value: "windowResolution", current: current.windowResolution },
+        { label: "Fullscreen Resolution", value: "fullscreenResolution", current: current.fullscreenResolution },
+        { label: "Command Line Args", value: "commandLineArguments", current: current.commandLineArguments }
+      ], {
+        placeHolder: "Select a project property to edit"
+      });
+
+      if (!propertyPick) {
+        return;
+      }
+
+      let nextValue = propertyPick.current;
+      if (propertyPick.value === "graphicsMode") {
+        const modePick = await vscode.window.showQuickPick([
+          "window",
+          "fullscreen",
+          "desktop",
+          "fulldesktop",
+          "hidden"
+        ], {
+          placeHolder: "Select a graphics mode"
+        });
+        if (!modePick) {
+          return;
+        }
+        nextValue = modePick;
+      } else {
+        const input = await vscode.window.showInputBox({
+          prompt: `Set ${propertyPick.label}`,
+          value: propertyPick.current
+        });
+        if (input === undefined) {
+          return;
+        }
+        nextValue = input;
+      }
+
+      await projectService.updateProjectSettings({
+        [propertyPick.value]: nextValue
+      });
+      projectAssetsTreeProvider.refresh();
+    }),
+    vscode.commands.registerCommand("darkbasicNext.project.addMedia", async () => {
+      const files = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: true,
+        openLabel: "Add Media"
+      });
+      if (!files?.length) {
+        return;
+      }
+
+      await projectService.addMediaFiles(files.map(file => file.fsPath));
+      projectAssetsTreeProvider.refresh();
+    }),
+    vscode.commands.registerCommand("darkbasicNext.project.addTodo", async () => {
+      const value = await vscode.window.showInputBox({
+        prompt: "Add a project TODO item"
+      });
+      if (!value) {
+        return;
+      }
+
+      await projectService.addTodo(value);
+      projectAssetsTreeProvider.refresh();
+    }),
+    vscode.commands.registerCommand("darkbasicNext.project.addComment", async () => {
+      const value = await vscode.window.showInputBox({
+        prompt: "Add a project comment"
+      });
+      if (!value) {
+        return;
+      }
+
+      await projectService.addComment(value);
+      projectAssetsTreeProvider.refresh();
+    }),
+    vscode.commands.registerCommand("darkbasicNext.project.setIcon", async () => {
+      const files = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        filters: {
+          "Icon": ["ico"]
+        },
+        openLabel: "Set Project Icon"
+      });
+      if (!files?.[0]) {
+        return;
+      }
+
+      await projectService.setIconFile(files[0].fsPath);
+      projectAssetsTreeProvider.refresh();
+    }),
+    vscode.commands.registerCommand("darkbasicNext.project.setCursor", async () => {
+      const slot = await vscode.window.showQuickPick([
+        { label: "Arrow Cursor", value: "cursorarrow" },
+        { label: "Wait Cursor", value: "cursorwait" },
+        { label: "Pointer 2", value: "pointer2" },
+        { label: "Pointer 3", value: "pointer3" },
+        { label: "Pointer 4", value: "pointer4" },
+        { label: "Pointer 5", value: "pointer5" }
+      ], {
+        placeHolder: "Select a project cursor slot"
+      });
+      if (!slot) {
+        return;
+      }
+
+      const files = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        filters: {
+          "Cursor": ["cur", "ani", "bmp", "png", "ico"]
+        },
+        openLabel: "Set Project Cursor"
+      });
+      if (!files?.[0]) {
+        return;
+      }
+
+      await projectService.setCursorFile(slot.value, files[0].fsPath);
+      projectAssetsTreeProvider.refresh();
     }),
     vscode.commands.registerCommand("darkbasicNext.compile", async () => {
       await compilerService.execute(await resolveToolchain(), "compile");
@@ -306,6 +453,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("darkbasicNext.project.refresh", async () => {
       await projectService.refreshCurrentProject();
       projectTreeProvider.refresh();
+      projectAssetsTreeProvider.refresh();
+    }),
+    vscode.commands.registerCommand("darkbasicNext.assets.refresh", async () => {
+      await projectService.refreshCurrentProject();
+      projectAssetsTreeProvider.refresh();
     }),
     vscode.commands.registerCommand("darkbasicNext.packages.refresh", () => {
       packagesTreeProvider.refresh();
@@ -316,6 +468,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       await openFile(item.filePath);
+    }),
+    vscode.commands.registerCommand("darkbasicNext.assets.openFile", async (item?: ProjectAssetTreeItem) => {
+      if (!item?.payload) {
+        return;
+      }
+
+      await openFile(item.payload);
     })
   );
 }

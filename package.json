@@ -24,7 +24,9 @@
     "onCommand:darkbasicNext.compile",
     "onCommand:darkbasicNext.run",
     "onCommand:darkbasicNext.package.search",
+    "onTaskType:darkbasic-next",
     "onView:darkbasicNext.project",
+    "onView:darkbasicNext.assets",
     "onView:darkbasicNext.packages"
   ],
   "main": "./out/extension.js",
@@ -168,6 +170,60 @@
       {
         "command": "darkbasicNext.project.openItem",
         "title": "DarkBASIC Next: Open Project Item"
+      },
+      {
+        "command": "darkbasicNext.project.editProperties",
+        "title": "DarkBASIC Next: Edit Project Properties"
+      },
+      {
+        "command": "darkbasicNext.project.addMedia",
+        "title": "DarkBASIC Next: Add Media"
+      },
+      {
+        "command": "darkbasicNext.project.addTodo",
+        "title": "DarkBASIC Next: Add TODO"
+      },
+      {
+        "command": "darkbasicNext.project.addComment",
+        "title": "DarkBASIC Next: Add Project Comment"
+      },
+      {
+        "command": "darkbasicNext.project.setIcon",
+        "title": "DarkBASIC Next: Set Project Icon"
+      },
+      {
+        "command": "darkbasicNext.project.setCursor",
+        "title": "DarkBASIC Next: Set Project Cursor"
+      },
+      {
+        "command": "darkbasicNext.assets.refresh",
+        "title": "DarkBASIC Next: Refresh Project Assets",
+        "category": "DarkBASIC Next"
+      },
+      {
+        "command": "darkbasicNext.assets.openFile",
+        "title": "DarkBASIC Next: Open Project Asset"
+      }
+    ],
+    "taskDefinitions": [
+      {
+        "type": "darkbasic-next",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "compile",
+              "run"
+            ]
+          },
+          "project": {
+            "type": "string",
+            "description": "Optional explicit .dbpro project path."
+          }
+        }
       }
     ],
     "viewsContainers": {
@@ -186,6 +242,10 @@
           "name": "Project"
         },
         {
+          "id": "darkbasicNext.assets",
+          "name": "Assets"
+        },
+        {
           "id": "darkbasicNext.packages",
           "name": "Packages"
         }
@@ -202,6 +262,11 @@
           "command": "darkbasicNext.packages.refresh",
           "when": "view == darkbasicNext.packages",
           "group": "navigation"
+        },
+        {
+          "command": "darkbasicNext.assets.refresh",
+          "when": "view == darkbasicNext.assets",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -214,6 +279,11 @@
           "command": "darkbasicNext.setMainFile",
           "when": "view == darkbasicNext.project && viewItem == darkbasicFile",
           "group": "navigation"
+        },
+        {
+          "command": "darkbasicNext.assets.openFile",
+          "when": "view == darkbasicNext.assets && viewItem == darkbasicAssetFile",
+          "group": "inline"
         },
         {
           "command": "darkbasicNext.package.install",
