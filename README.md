@@ -7,6 +7,7 @@ modernized DarkBASIC Next toolchain.
 
 - `.dba`, `.dbsource`, and `.dbpro` awareness
 - syntax highlighting and starter snippets
+- keyword completions, hover help, document outline, and simple go-to-definition
 - project open/create/save flows for `.dbpro`
 - project tree for source files
 - compile and compile-and-run against `DBPCompiler.exe`

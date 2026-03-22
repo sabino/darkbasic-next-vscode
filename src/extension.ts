@@ -1,7 +1,9 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { registerDarkBasicLanguageProviders, resolveHelpEntryFromEditor } from "./language/darkbasicLanguageProviders";
 import { CompilerService } from "./services/compilerService";
 import { DbNextClient, ResolvedPackage } from "./services/dbnextClient";
+import { HelpIndex } from "./services/helpIndex";
 import { ProjectService } from "./services/projectService";
 import { resolveToolchain } from "./services/toolchain";
 import { PackagesTreeProvider, PackageTreeItem } from "./views/packagesTreeProvider";
@@ -15,8 +17,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const compilerService = new CompilerService(output, diagnostics, projectService);
   const dbnextClient = new DbNextClient(output);
+  const helpIndex = new HelpIndex(output);
   const projectTreeProvider = new ProjectTreeProvider(projectService);
   const packagesTreeProvider = new PackagesTreeProvider(dbnextClient);
+
+  registerDarkBasicLanguageProviders(context, helpIndex);
 
   context.subscriptions.push(
     output,
@@ -263,6 +268,36 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!toolchain) {
         vscode.window.showErrorMessage("DarkBASIC toolchain not found.");
         return;
+      }
+
+      const editor = vscode.window.activeTextEditor;
+      const matchedEntry = await resolveHelpEntryFromEditor(helpIndex, editor);
+      if (matchedEntry) {
+        await vscode.env.openExternal(vscode.Uri.file(path.normalize(matchedEntry.helpAbsolutePath)));
+        return;
+      }
+
+      const selectionText = editor?.document.getText(editor.selection).trim();
+      if (selectionText) {
+        const results = await helpIndex.search(toolchain, selectionText);
+        if (results.length > 0) {
+          const pick = await vscode.window.showQuickPick(
+            results.slice(0, 50).map(entry => ({
+              label: entry.command,
+              description: entry.signature,
+              detail: entry.helpRelativePath,
+              entry
+            })),
+            {
+              placeHolder: "Select a DarkBASIC help topic"
+            }
+          );
+
+          if (pick) {
+            await vscode.env.openExternal(vscode.Uri.file(path.normalize(pick.entry.helpAbsolutePath)));
+            return;
+          }
+        }
       }
 
       const helpEntry = vscode.Uri.file(path.join(toolchain.helpRoot, "main.htm"));
